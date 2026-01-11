@@ -96,3 +96,29 @@ isConvergent matrix r =
           calculateDiagonalSum [] _ acc = acc
           calculateDiagonalSum (first : rest) n acc = calculateDiagonalSum rest (n + 1) (acc + first !! n)
    in (totalSum - diagonalSum) < r
+
+-- 9. Transpose
+-- mytranspose [[1,2,3],[4,5,6],[7,8,9]] -> [[1,4,7],[2,5,8],[3,6,9]]
+mytranspose :: Matrix -> Matrix
+mytranspose [] = []
+mytranspose ([] : _) = [] -- if it's non-empty, is it a list whose first element is an empty list?
+mytranspose m = map head m : mytranspose (map tail m)
+
+-- 10. isSymmetric: a predicate that checks if a given matrix is symmetric
+-- isSymmetric [[1,2,3],[4,5,6],[7,8,9]] -> False
+isSymmetric :: Matrix -> Bool
+isSymmetric [] = True
+isSymmetric m =
+  let (nRows, nCols) = matrixDim m
+   in nRows == nCols && m == mytranspose m
+
+-- 11. Multiply a n x k matrix with a k x m returning the result
+-- matmultiply [[1,2],[3,4]] * [[1],[2]] -> [[5],[11]]
+matmultiply :: Matrix -> Matrix -> Matrix
+matmultiply [] _ = [[]]
+matmultiply _ [] = [[]]
+matmultiply a b =
+  let dotProduct :: Vector -> Vector -> Int
+      dotProduct u v = sum (zipWith (*) u v)
+      colsB = mytranspose b
+   in map (\rowA -> map (dotProduct rowA) colsB) a
