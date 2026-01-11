@@ -1,5 +1,5 @@
 import Data.List (transpose)
-import GHC.Base (VecCount (Vec16))
+import Distribution.Compat.CharParsing (upper)
 
 -- define matrix type
 type Matrix = [[Int]]
@@ -44,7 +44,6 @@ colaltsums matrix =
 
 -- 4. Find min and max of each column in a matrix
 -- minmax [[1,2,3],[4,5,6],[7,8,9]] -> [[1,7],[2,8],[3,9]]
-
 minmax :: Matrix -> Matrix
 minmax [] = []
 minmax matrix =
@@ -52,3 +51,48 @@ minmax matrix =
       findMax :: Vector -> Vector
       findMax col = [minimum col, maximum col]
    in map findMax cols
+
+-- 5. Check if a matrix is lower triangular
+-- lowertriangular [[1,0,0],[2,3,0],[4,5,6]] -> True
+lowertriangular :: Matrix -> Bool
+lowertriangular [] = True
+lowertriangular matrix = check matrix 0
+  where
+    check :: Matrix -> Int -> Bool
+    check [] _ = True
+    check (first : rest) n =
+      let aboveTheDiagonal = drop (n + 1) first
+          isValidRow = all (== 0) aboveTheDiagonal
+       in isValidRow && check rest (n + 1)
+
+-- 6. Check if a matrix is upper triangular
+-- uppertriangular [[1,2,3],[0,4,5],[0,0,6]] -> True
+uppertriangular :: Matrix -> Bool
+uppertriangular [] = True
+uppertriangular matrix = check matrix 0
+  where
+    check :: Matrix -> Int -> Bool
+    check [] _ = True
+    check (first : rest) n =
+      let isValidRow = all (== 0) (take n first)
+       in isValidRow && check rest (n + 1)
+
+-- 7. Check if a matrix is diagonal
+-- isDiagonal [[1,0,0],[0,1,0],[0,0,1]] -> True
+-- could be enough to check both upper and lower triangular condition
+isDiagonal :: Matrix -> Bool
+isDiagonal matrix = uppertriangular matrix && lowertriangular matrix
+
+-- 8. Check if the matrix is convergent with radius r (i.e. if the sum of the elements - diagonal sum is less than r)
+-- isConvergent [[1,2,3],[4,5,6],[7,8,9]] 31 -> True
+isConvergent :: Matrix -> Int -> Bool
+isConvergent [] _ = True
+isConvergent matrix r =
+  -- total_sum - diagonal_sum < r?
+  let totalSum = sum (concat matrix)
+      diagonalSum = calculateDiagonalSum matrix 0 0
+        where
+          calculateDiagonalSum :: Matrix -> Int -> Int -> Int
+          calculateDiagonalSum [] _ acc = acc
+          calculateDiagonalSum (first : rest) n acc = calculateDiagonalSum rest (n + 1) (acc + first !! n)
+   in (totalSum - diagonalSum) < r
