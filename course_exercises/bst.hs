@@ -113,3 +113,28 @@ balanceWithHeight (Node _ left right) =
   let (isLeftBalanced, lHeight) = balanceWithHeight left
       (isRightBalanced, rHeight) = balanceWithHeight right
    in (isLeftBalanced && isRightBalanced && abs (lHeight - rHeight) <= 1, 1 + max lHeight rHeight)
+
+data WBST a = WVoid | WNode a Int (WBST a) (WBST a) deriving (Eq, Ord, Read, Show)
+
+-- for testing
+exampleWBST :: WBST Int
+exampleWBST = WNode 10 3 (WNode 5 1 WVoid WVoid) (WNode 15 1 WVoid WVoid)
+
+size :: WBST a -> Int
+size WVoid = 0
+size (WNode _ w _ _) = w
+
+-- 11. insert into a weighted bst
+-- insert 4 exampleWBST -> WNode 10 4 (WNode 5 2 (WNode 4 1 WVoid WVoid) WVoid) (WNode 15 1 WVoid WVoid)
+insert :: (Ord a, Eq a) => a -> WBST a -> WBST a
+insert x WVoid = WNode x 1 WVoid WVoid
+insert x (WNode v w l r)
+  | x == v = WNode v w l r
+  | x < v =
+      let newLeft = insert x l
+          weight = size newLeft + size r + 1
+       in WNode v weight newLeft r
+  | x > v =
+      let newRight = insert x r
+          weight = size newRight + size l + 1
+       in WNode v weight l newRight
