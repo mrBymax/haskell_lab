@@ -1,3 +1,5 @@
+import Control.Applicative ((<|>))
+
 -- Definition of the Binary Search Tree ADT
 data BST a
   = Void
@@ -138,3 +140,108 @@ insert x (WNode v w l r)
       let newRight = insert x r
           weight = size newRight + size l + 1
        in WNode v weight l newRight
+
+-- 12. diff2next: given a BST, we build a BST of pairs in which the first element is preserved and the second is (Just) the difference with the next value in the BST oppure Nothing if they're equal
+-- diff2next Node 4 Void (Node 7 (Node 5 Void Void) Void) -> Node (4,Just 1) Void (Node (7,Nothing) (Node (5,Just 2) Void Void) Void).
+-- idea: reverse in-order traversal
+diff2next :: (Num a, Ord a) => BST a -> BST (a, Maybe a)
+diff2next bst = helper bst Nothing
+
+findMin :: BST a -> a -- must be non empty
+findMin (Node v Void _) = v
+findMin (Node _ l _) = findMin l
+
+helper :: (Num a, Ord a) => BST a -> Maybe a -> BST (a, Maybe a)
+helper Void _ = Void -- an empty tree remains empty
+helper (Node val left right) parentSuccessor =
+  let newRight = helper right parentSuccessor
+      currentSuccessor = case right of
+        Void -> parentSuccessor -- we cannot find any other successor
+        r -> Just (findMin r)
+      diff = fmap (\succVal -> succVal - val) currentSuccessor
+      newLeft = helper left (Just val) -- could not be greater if we scan left
+   in Node (val, diff) newLeft newRight
+
+-- 13. levelOrderVisit
+-- levelOrderVisit exampleTree -> [10, 5, 15, 12]
+levelOrderVisit :: (Eq a, Ord a) => BST a -> Vector a
+levelOrderVisit Void = []
+levelOrderVisit bst = concat (levels [bst])
+  where
+    levels :: [BST a] -> [[a]]
+    levels [] = []
+    levels nodes =
+      let currentVals = [val | Node val _ _ <- nodes]
+          children = concat [[left, right] | Node _ left right <- nodes]
+       in if null currentVals
+            then []
+            else currentVals : levels children
+
+-- post-order travaersal fold implementation
+fold :: (Ord a) => (a -> b -> b -> b) -> b -> BST a -> b
+fold _ z Void = z
+-- fold function base_value tree = f val (fold f base_value left) (fold f base_value right)
+fold f z (Node x l r) = f x (fold f z l) (fold f z r)
+
+-- 14. treeheight with fold
+-- treeheight exampleTree -> 3
+treeheight :: (Ord a) => BST a -> Int
+treeheight = fold (\_ lHeight rHeight -> 1 + max lHeight rHeight) 0
+
+-- skipped 15 and 16 because they were variants of already-solved exercises
+-- 17. maxDiameter: given a list of BSTs determine the absolute max diameter
+-- maxDiameter [exampleTree] -> 4
+maxDiameter :: (Eq a, Ord a) => [BST a] -> Int
+maxDiameter [] = 0
+maxDiameter bsts = maximum (map diameter bsts)
+
+-- Version 1: inefficient because we call diameter on the same subtrees multiple times
+slowdiameter :: BST a -> Int
+slowdiameter Void = 0
+slowdiameter (Node _ left right) =
+  let leftSubtree = slowdiameter left
+      rightSubtree = slowdiameter right
+      path = leftSubtree + rightSubtree + 1 -- through root
+   in max path (max leftSubtree rightSubtree)
+
+-- Version 2:
+diameter :: BST a -> Int
+diameter bst = snd (heightAndDiameter bst)
+
+-- a faster implementation would calculate both hight and diameter at the same time
+heightAndDiameter :: BST a -> (Int, Int)
+heightAndDiameter Void = (0, 0)
+heightAndDiameter (Node _ left right) =
+  let (leftHeight, leftDiameter) = heightAndDiameter left
+      (rightHeight, rightDiameter) = heightAndDiameter right
+      currentHeight = 1 + max leftHeight rightHeight
+      path = leftHeight + rightHeight + 1
+      currentDiameter = max path (max leftDiameter rightDiameter)
+   in (currentHeight, currentDiameter)
+
+-- 18. isBST: check if a given tree is a bst
+-- isBST exampleTree -> True
+isBST :: (Ord a) => BST a -> Bool
+isBST Void = True
+-- we need a richer DS that tells us:
+-- 1. is this a valid BST?
+-- 2. it's min value (Maybe a)
+-- 3. it's max value (Maybe a)
+-- at each step the result should be a tuple (Bool, Maybe a, Maybe a)
+isBST bst = fst_of_3 (fold isBST_helper (True, Nothing, Nothing) bst)
+  where
+    fst_of_3 (b, _, _) = b
+    isBST_helper val (isBST_left, minVal_left, maxVal_left) (isBST_right, minVal_right, maxVal_right) =
+      let isValid =
+            isBST_left
+              && isBST_right
+              && all (< val) maxVal_left
+              && all (> val) minVal_right
+          newMin = minVal_left <|> Just val
+          newMax = maxVal_right <|> Just val
+       in (isValid, newMin, newMax)
+
+-- please, note the usage of the opearator <|> instead of:
+-- new_min = case l_min of
+--            Just left_minimum -> Just left_minimum
+--            Nothing           -> Just val
