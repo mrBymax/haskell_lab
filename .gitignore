@@ -25,3 +25,7 @@ cabal.project.local~
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Haskell
 .DS_Store
+
+# Bloated code
+ex_picker.hs
+course_exercises/flex/remove_comment
