@@ -1,0 +1,173 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+
+/**
+To solve the problem of bottom-up evaluation, we use a custom function to create nodes into the AST
+to modify the meaning of the actions (i.e. actions like { $$ = $3 + $4; } won't be executed, but will
+allocate a "node" of the tree, linking it to its subnodes.
+The calculation is the last thing computed
+*/
+
+typedef enum{
+    NODE_NUM, NODE_ADD, NODE_SUB, NODE_MUL, NODE_EQ,
+    NODE_IF, NODE_CASE, NODE_CLAUSE, NODE_LIST
+} NodeType;
+
+typedef struct ASTNode {
+    NodeType type;
+    int value;              /* used only if type == NODE_NUM */
+    struct ASTNode* child1; /* first operand/condition */
+    struct ASTNode* child2; /* true branch/clause */
+    struct ASTNode* child3; /* false branch/clause */
+} ASTNode;
+
+int eval(ASTNode *root);
+int yylex(void);
+void yyerror(char* s);
+
+%}
+
+%union {
+    int val;        /* for lexer's NUM */
+    struct ASTNode* node;  /* for G's non-terminal */
+}
+
+%token <val> NUM
+%token IF CASE
+
+%type <node> expr clause_list clause
+
+%%
+
+calc: expr '\n' { printf("Result: %d\n", eval($1)); exit(0); }
+    ;
+
+expr: NUM
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_NUM;
+          $$->value = $1;
+      }
+    | '(' '+' expr expr ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_ADD;
+          $$->child1 = $3;
+          $$->child2 = $4;
+      }
+    | '(' '-' expr expr ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_SUB;
+          $$->child1 = $3;
+          $$->child2 = $4;
+      }
+    | '(' '*' expr expr ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_MUL;
+          $$->child1 = $3;
+          $$->child2 = $4;
+      }
+    | '(' '=' expr expr ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_EQ;
+          $$->child1 = $3;
+          $$->child2 = $4;
+      }
+    | '(' IF expr expr expr ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_IF;
+          $$->child1 = $3;
+          $$->child2 = $4;
+          $$->child3 = $5;
+      }
+    | '(' CASE expr clause_list ')'
+      {
+          $$ = malloc(sizeof(ASTNode));
+          $$->type = NODE_CASE;
+          $$->child1 = $3;
+          $$->child2 = $4;
+      }
+    ;
+
+clause_list : clause
+    {
+        $$ = $1;
+    }
+    | clause clause_list
+        {
+            /* Right recursion for linked list */
+            $1->child3 = $2;
+            $$ = $1;
+        }
+    ;
+
+clause : '(' expr expr ')'
+    {
+        $$ = malloc(sizeof(ASTNode));
+        $$->type = NODE_CLAUSE;
+        $$->child1 = $2;
+        $$->child2 = $3;
+        $$->child3 = NULL;
+    }
+    ;
+
+%%
+
+int eval(ASTNode* root){
+    if (!root) return 0;
+    switch(root->type) {
+        case NODE_NUM:
+            return root->value;
+        case NODE_ADD:
+            return eval(root->child1) + eval(root->child2);
+        case NODE_SUB:
+            return eval(root->child1) - eval(root->child2);
+        case NODE_MUL:
+            return eval(root->child1) * eval(root->child2);
+        case NODE_EQ:
+            return eval(root->child1) == eval(root->child2) ? 1 : 0;
+        case NODE_IF:
+            return eval(root->child1) ? eval(root->child2) : eval(root->child3);
+        case NODE_CASE: {
+            int target_value = eval(root->child1);
+            ASTNode* current_clause = root->child2;
+
+            while (current_clause != NULL){
+                if (current_clause->type != NODE_CLAUSE) {
+                    fprintf(stderr, "Internal Error");
+                    exit(1);
+                }
+
+                /* Test current clause, if a match is found, evaluate the branch and exit */
+                int match_value = eval(current_clause->child1);
+                if (target_value == match_value) {
+                    return eval(current_clause->child2);
+                }
+                /* Next clause */
+                current_clause = current_clause->child3;
+            }
+
+            /* No correct clause found */
+            return 0;
+        }
+
+
+        default:
+            fprintf(stderr, "Error: invalid node type\n");
+            exit(1);
+    }
+}
+
+void yyerror(char* s){
+    fprintf(stderr, "Syntax error!");
+}
+
+int main(void){
+    yyparse();
+    return 0;
+}

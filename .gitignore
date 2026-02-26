@@ -28,4 +28,9 @@ cabal.project.local~
 
 # Bloated code
 ex_picker.hs
-course_exercises/flex/remove_comment
+
+# Out file
+remove_comment
+participio
+course_exercises/yacc/04/calc
+course_exercises/yacc/09/scheme
