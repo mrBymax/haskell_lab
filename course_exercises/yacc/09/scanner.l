@@ -12,7 +12,7 @@ extern YYSTYPE yylval;
 "if"        { return IF; }
 "case"      { return CASE; }
 [-+*=()\n]  { return yytext[0]; }
-[ \t]+      { /* Soppressione lessicale dei whitespace */ }
+[ \t]+      { /* whitespace */ }
 .           { fprintf(stderr, "Error: character unrecognised '%s'\n", yytext); }
 
 %%
