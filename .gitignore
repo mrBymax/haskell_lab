@@ -34,3 +34,5 @@ remove_comment
 participio
 course_exercises/yacc/04/calc
 course_exercises/yacc/09/scheme
+course_exercises/prepare.py
+sent_for_grading/
