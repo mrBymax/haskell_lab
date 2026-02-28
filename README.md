@@ -7,4 +7,4 @@ The majority of the exercises are provided in class. I tried to include a brief 
 
 
 Note:
-If things did not change, you're still required to do also some exercises on lexical analysers. That's why they some of them are not present in this repo.
+If things did not change, you're still required to do also some exercises on lexical analysers. That's why some of them are not present in this repo.
